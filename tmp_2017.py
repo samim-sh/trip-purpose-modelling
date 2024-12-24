@@ -54,7 +54,7 @@ def preprocess_data(df):
     one_hot_df = pd.DataFrame(encoded_features, columns=encoded_feature_names, index=df.index)
     df = pd.concat([df, one_hot_df], axis=1)
 
-    X = df.drop(columns=['id', 'R_SEX', 'WORKER', 'TRPTRANS', 'R_RELAT', "TRAVDAY"]).values
+    X = df.drop(columns=['id', 'R_SEX', 'WORKER', 'TRPTRANS', 'R_RELAT', "TRAVDAY", "WHYTRP1S"]).values
     y = df['WHYTRP1S'].values
     y = ohe.fit_transform(y.reshape(-1,1))
 
