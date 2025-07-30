@@ -1,0 +1,5 @@
+.idea
+data
+data/2017/*.csv
+data/2022/*.csv
+__pycache__

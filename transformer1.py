@@ -1,23 +1,21 @@
-import optuna
 import pandas as pd
 import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense, BatchNormalization
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-from optuna.integration import TFKerasPruningCallback
+
+
+
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-
 import tensorflow as tf
-
 from main import categorize_age
 
-
-df = pd.read_csv('df_trip.csv')
 np.random.seed(6)
 tf.random.set_seed(6)
+window_size = 2
+
 def remove_corrupt_rows(df):
 	df = df[~df.isin([-1, -9, -7, -8]).any(axis=1)]
 	return df
@@ -43,14 +41,15 @@ def create_df():
 
 	df_trip = filter_loc(df_trip)
 	df_trip = pd.merge(df_trip, df_per, on=['HOUSEID', 'PERSONID'])
-	df = remove_corrupt_rows(df_trip)
-	df_trip = df_trip[df_trip.SEQ_TRIPID>1]
+	df_trip = remove_corrupt_rows(df_trip)
+
+	df_trip["id"] = df_trip[['HOUSEID', 'PERSONID']].apply(lambda x: int(f"{x.HOUSEID}{x.PERSONID}"), axis=1)
+	df_trip = df_trip.groupby('id').filter(lambda x: len(x) > 1)
 
 	df_trip = categorize_age(df_trip)
 	df_trip['time_of_day'] = df_trip['STRTTIME'].apply(lambda x: ((x // 100) * 60 + (x % 100)) // 30 + 1)
 
 	df_trip['WHYTRP1S'] = df_trip.WHYTRP1S.replace({10: 2, 40: 3, 20: 4, 30: 5, 50: 5, 70: 5, 80: 5, 97: 5})
-	df_trip["id"] = df_trip[['HOUSEID', 'PERSONID']].apply(lambda x: int(f"{x.HOUSEID}{x.PERSONID}"), axis=1)
 	df_trip = df_trip[
 		["id", "R_RELAT", "HHFAMINC", "age_category", "R_SEX", "WORKER", "TRPTRANS", "TRAVDAY", "time_of_day", "SEQ_TRIPID", "WHYTRP1S"]]
 	df_trip.drop_duplicates(inplace=True)
@@ -84,11 +83,11 @@ def preprocess_data(df):
 	y_sequences = []
 	for _, group in grouped:
 		# Drop unused columns and target from input features
-		X = group.tail(7).apply(lambda g: g.iloc[:-1]).drop(columns=['id', 'WHYTRP1S', "R_RELAT", "age_category", 'R_SEX', 'WORKER', 'TRPTRANS', "TRAVDAY", "time_of_day"]).values
+		X = group.tail(window_size).apply(lambda g: g.iloc[:-1]).drop(columns=['id', 'WHYTRP1S', "R_RELAT", "age_category", 'R_SEX', 'WORKER', 'TRPTRANS', "TRAVDAY", "time_of_day"]).values
 		y = group.tail(1)[['WHYTRP1S_1', 'WHYTRP1S_2', 'WHYTRP1S_3', 'WHYTRP1S_4', 'WHYTRP1S_5']].values
 		X_sequences.append(X)
 		y_sequences.append(y)
-	X_sequences = pad_sequences(X_sequences, maxlen=6, padding='pre', value=0.0)
+	X_sequences = pad_sequences(X_sequences, maxlen=window_size-1, padding='pre', value=0.0)
 	return X_sequences, y_sequences
 
 X, y = preprocess_data(df)
@@ -98,77 +97,57 @@ y_test = np.array(y_test).reshape(-1, 5)
 # 2) Split the remaining 80% into train (60% overall) and val (20% overall)
 X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.25)
 y_train, y_val = np.array(y_train).reshape(-1, 5), np.array(y_val).reshape(-1, 5)
+# # Reshape input data for LSTM (samples, timesteps, features)
+# X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
+# X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
+# X_val = X_val.reshape((X_val.shape[0], 1, X_val.shape[1]))
 
+# Build LSTM Model
+num_classes = len(np.unique(df['WHYTRP1S']))
 
-def create_model(trial, input_shape):
-	# Hyperparameters to tune
-	lstm_units = trial.suggest_int('lstm_units_1', 32, 256, step=32)
-	lstm_units = trial.suggest_int('lstm_units_2', 32, 256, step=32)
-	dense_units_1 = trial.suggest_int('dense_units_1', 32, 128, step=32)
-	dense_units_2 = trial.suggest_int('dense_units_2', 16, 64, step=16)
-	dropout_lstm = trial.suggest_float('dropout_lstm', 0.0, 0.5, step=0.1)
-	dropout_dense_1 = trial.suggest_float('dropout_dense_1', 0.0, 0.5, step=0.1)
-	dropout_dense_2 = trial.suggest_float('dropout_dense_2', 0.0, 0.5, step=0.1)
-	learning_rate = trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True)
+# Transformer Model
+def create_transformer_model(input_dim, num_classes, embed_dim=32, num_heads=4, ff_dim=64, dropout=0.1, num_transformer_blocks=2):
+	inputs = keras.Input(shape=(input_dim))
 
-	model = Sequential()
-	model.add(LSTM(lstm_units, input_shape=input_shape, return_sequences=False))
-	model.add(Dropout(dropout_lstm))
-	model.add(BatchNormalization())
-	model.add(Dense(dense_units_1, activation='relu'))
-	model.add(Dropout(dropout_dense_1))
-	model.add(Dense(dense_units_2, activation='relu'))
-	model.add(Dropout(dropout_dense_2))
-	model.add(Dense(y_train.shape[1], activation='softmax'))
+	# Embedding Layer (Crucial for non-textual data)
+	x = layers.Dense(embed_dim, activation='relu')(inputs) # Map input features to higher dim space
 
-	optimizer = Adam(learning_rate=learning_rate)
-	model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+	for _ in range(num_transformer_blocks):
+		# Multi-Head Attention
+		attention_output = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)(x, x)
+		attention_output = layers.Dropout(dropout)(attention_output)
+		x = layers.Add()([x, attention_output])
+		x = layers.LayerNormalization(epsilon=1e-6)(x)
+
+		# Feed Forward Part
+		ff_output = layers.Dense(ff_dim, activation="relu")(x)
+		ff_output = layers.Dropout(dropout)(ff_output)
+		ff_output = layers.Dense(embed_dim)(ff_output)
+		ff_output = layers.Dropout(dropout)(ff_output)
+		x = layers.Add()([x, ff_output])
+		x = layers.LayerNormalization(epsilon=1e-6)(x)
+
+	# Classification Head
+	x = layers.Flatten()(x)  # Flatten the output
+	x = layers.Dense(128, activation='relu')(x)
+	x = layers.Dropout(0.2)(x)
+	outputs = layers.Dense(num_classes, activation='softmax')(x)
+
+	model = keras.Model(inputs=inputs, outputs=outputs)
 	return model
 
+input_shape = (X_train.shape[1], X_train.shape[2])  # (6, 93)
+num_classes = y_train.shape[1]
 
-def objective(trial):
-	# Suggest the number of epochs and batch size
-	epochs = trial.suggest_int('epochs', 1, 20, step=1)
-	batch_size = trial.suggest_int('batch_size', 32, 256, step=32)
+model = create_transformer_model(input_shape, num_classes)
 
-	model = create_model(trial, (X_train.shape[1], X_train.shape[2]))
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.summary()
 
-	# Optional early stopping for faster convergence
-	es = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+# Train the model
+history = model.fit(X_train, y_train, epochs=5, batch_size=256, validation_data=(X_val, y_val))
 
-	# Pruning callback (optional)
-	pruning_callback = TFKerasPruningCallback(trial, 'val_accuracy')
-
-	history = model.fit(
-		X_train, y_train,
-		validation_data=(X_val, y_val),
-		epochs=epochs,
-		batch_size=batch_size,
-		callbacks=[es, pruning_callback],
-		verbose=0
-	)
-
-	# Get the best validation accuracy of this trial
-	val_acc = max(history.history['val_accuracy'])
-	return val_acc
-
-
-# Create a study and optimize
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=10, timeout=3600)  # for example, 20 trials
-
-print("Number of finished trials: ", len(study.trials))
-print("Best trial:")
-best_trial = study.best_trial
-print("  Value: ", best_trial.value)
-print("  Params: ")
-for key, value in best_trial.params.items():
-	print("    {}: {}".format(key, value))
-
-# Rebuild and evaluate the best model
-best_model = create_model(study.best_trial, (X_train.shape[1], X_train.shape[2]))
-best_model.fit(X_train, y_train, epochs=best_trial.params['epochs'], batch_size=best_trial.params['batch_size'],
-			   verbose=0)
-_, test_acc = best_model.evaluate(X_val, y_val, verbose=0)
-print(f"Test Accuracy with best hyperparameters: {test_acc * 100:.2f}%")
-
+# Evaluate the model
+loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+print(f"Test Loss: {loss:.4f}")
+print(f"Test Accuracy: {accuracy:.4f}")

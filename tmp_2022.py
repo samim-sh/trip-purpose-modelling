@@ -12,34 +12,35 @@ from main import categorize_age
 
 tf.random.set_seed(7)
 
-# df_per = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/2022/perv2pub.csv", header=0,
-#                      usecols=['HOUSEID','PERSONID','R_SEX','WORKER','R_AGE','R_RELAT'])
-# df_trip = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/2022/tripv2pub.csv", header=0,
-#                       usecols=['HOUSEID','PERSONID',"STRTTIME","TDAYDATE","TRAVDAY","TRPTRANS","CDIVMSAR","HHFAMINC","WHYTRP1S"])
-# df_trip = pd.merge(df_trip, df_per, on=['HOUSEID', 'PERSONID'])
+df_per = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/2022/perv2pub.csv", header=0,
+                     usecols=['HOUSEID','PERSONID','R_SEX','WORKER','R_AGE','R_RELAT'])
+df_trip = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/2022/tripv2pub.csv", header=0,
+                      usecols=['HOUSEID','PERSONID',"STRTTIME","TDAYDATE","TRAVDAY","TRPTRANS","CDIVMSAR","HHFAMINC","WHYTRP1S"])
+df_trip = pd.merge(df_trip, df_per, on=['HOUSEID', 'PERSONID'])
 # df_trip = df_trip[~df_trip.isin([-1, -9, -7, -8]).any(axis=1)]
-#
-# # df_trip = df_trip[df_trip.CDIVMSAR.isin([51,52,53,54])]
-# df_trip = categorize_age(df_trip)
-# df_trip['time_of_day'] = df_trip['STRTTIME'].apply(lambda x: ((x // 100) * 60 + (x % 100)) // 30 + 1)
-#
-# # df_trip['date_'] = df_trip[['TDAYDATE', 'TRAVDAY']].apply(lambda x:dt.datetime(int(str(x.TDAYDATE)[:4]),int(str(x.TDAYDATE)[4:],10),x.TRAVDAY).date(), axis=1)
-# # df_trip['year_'] = df_trip['TDAYDATE'].apply(lambda x:x//100)
-# # df_trip['month_'] = df_trip['TDAYDATE'].apply(lambda x:x%100)
-# # df_trip['day_'] = df_trip['TRAVDAY']
-# # df_trip['hour_'] = df_trip['STRTTIME'].apply(lambda x:x//100)
-# # df_trip['minute_'] = df_trip['STRTTIME'].apply(lambda x:x%100)
-# df_trip['WHYTRP1S'] = df_trip.WHYTRP1S.replace({10: 2, 40: 3, 20: 4, 30: 5, 50: 5, 70: 5, 80: 5, 97: 5})
-# df_trip["id"] = df_trip[['HOUSEID', 'PERSONID']].apply(lambda x: int(f"{x.HOUSEID}{x.PERSONID}"), axis=1)
-# df_trip = df_trip[
-#     ["id", "R_RELAT", "HHFAMINC", "age_category", "R_SEX", "WORKER", "TRPTRANS", "TRAVDAY", "time_of_day", "WHYTRP1S"]]
-# df_trip.drop_duplicates(inplace=True)
-# dd = {1:20,2:18,3:1,4:3,5:2,6:4,7:21,8:7,9:21,10:9,11:8,12:17,13:21,14:21,15:13,16:11,17:15,18:21,19:14,20:21,97:21}
-# df_trip['TRPTRANS'] = df_trip.TRPTRANS.replace({10: 11})
-# df_trip = df_trip[df_trip.TRPTRANS.isin(dd.values())]
-# df = df_trip.sort_values(['id', 'time_of_day'])
 
-df = pd.read_csv('df_trip.csv')
+# df_trip = df_trip[df_trip.CDIVMSAR.isin([51,52,53,54])]
+df_trip = categorize_age(df_trip)
+df_trip['time_of_day'] = df_trip['STRTTIME'].apply(lambda x: ((x // 100) * 60 + (x % 100)) // 30 + 1)
+
+# df_trip['date_'] = df_trip[['TDAYDATE', 'TRAVDAY']].apply(lambda x:dt.datetime(int(str(x.TDAYDATE)[:4]),int(str(x.TDAYDATE)[4:],10),x.TRAVDAY).date(), axis=1)
+# df_trip['year_'] = df_trip['TDAYDATE'].apply(lambda x:x//100)
+# df_trip['month_'] = df_trip['TDAYDATE'].apply(lambda x:x%100)
+# df_trip['day_'] = df_trip['TRAVDAY']
+# df_trip['hour_'] = df_trip['STRTTIME'].apply(lambda x:x//100)
+# df_trip['minute_'] = df_trip['STRTTIME'].apply(lambda x:x%100)
+df_trip['WHYTRP1S'] = df_trip.WHYTRP1S.replace({10: 2, 40: 3, 20: 4, 30: 5, 50: 5, 70: 5, 80: 5, 97: 5})
+df_trip["id"] = df_trip[['HOUSEID', 'PERSONID']].apply(lambda x: int(f"{x.HOUSEID}{x.PERSONID}"), axis=1)
+df_trip = df_trip[
+    ["id", "R_RELAT", "HHFAMINC", "age_category", "R_SEX", "WORKER", "TRPTRANS", "TRAVDAY", "time_of_day", "WHYTRP1S"]]
+df_trip.drop_duplicates(inplace=True)
+dd = {1:20,2:18,3:1,4:3,5:2,6:4,7:21,8:7,9:21,10:9,11:8,12:17,13:21,14:21,15:13,16:11,17:15,18:21,19:14,20:21,97:21}
+df_trip['TRPTRANS'] = df_trip.TRPTRANS.replace({10: 11})
+df_trip = df_trip[df_trip.TRPTRANS.isin(dd.values())]
+df = df_trip.sort_values(['id', 'time_of_day'])
+
+# df = pd.read_csv('df_trip.csv')
+
 
 # Preprocessing
 def preprocess_data(df):
@@ -55,7 +56,7 @@ def preprocess_data(df):
     df = pd.concat([df, one_hot_df], axis=1)
 
     X = df.drop(columns=['id', 'R_SEX', 'WORKER', 'TRPTRANS', 'R_RELAT', "TRAVDAY","WHYTRP1S"]).values
-    # y = df['WHYTRP1S'].values.reshape(-1,1)
+    y = df['WHYTRP1S'].values
     y = ohe.fit_transform(y.reshape(-1,1))
 
     return X, y
@@ -84,7 +85,7 @@ model.add(Dense(5, activation='softmax'))
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Train the model
-history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=10, batch_size=128, verbose=1)
+history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=20, batch_size=160, verbose=1)
 
 # Evaluate the model
 _, accuracy = model.evaluate(X_test, y_test, verbose=0)

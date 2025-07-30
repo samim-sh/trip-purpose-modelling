@@ -400,164 +400,38 @@ def trip():
 	"""
 
 
-# def neural_network(df):
-#
-# 	"""
-# 		HOUSEID - Unique Identifier- Household​(codebook)
-# 		PERSONID - Person ID within household​(codebook)
-# 		TRIPID - Trip ID for each trip a person took​(codebook)
-# 		SEQ_TRIPID - Renumbered sequential trip ID​(codebook)
-# 		VEHCASEID - Unique vehicle identifier​(codebook)
-# 		FRSTHM - First trip of the day was from home​(codebook)
-# 		TDWKND - Weekend trip indicator​(codebook)
-# 		TDAYDATE - Date of travel day (YYYYMM)​(codebook)
-# 		TRAVDAY - Travel day - day of the week​(codebook)
-# 	STRTTIME - 24 hour local start time of trip​(codebook)
-# 		ENDTIME - 24 hour local end time of trip​(codebook)
-# 		TRVLCMIN - Trip duration in minutes​(codebook)
-# 		LOOP_TRIP - Trip origin and destination at identical location​(codebook)
-# 		DWELTIME - Dwelling time at location​(codebook)
-# 		PUBTRANS - Used public transit on trip​(codebook)
-# 	TRPTRANS - Trip mode, derived (e.g., car, bus, bike)​(codebook)
-# 		WALK - Walking activity on trip​(codebook)
-# 		TRPMILES - Calculated trip distance converted into miles​(codebook)
-# 		RAIL - MSA heavy rail status for household​(codebook)
-# 		CENSUS_D - Census Division classification for home address (not available in search results)
-# 		CENSUS_R - Census Region classification for home address​(codebook)
-# 	CDIVMSAR - Census Division, MSA, Rail Grouping​(codebook)
-# 	HHFAMINC - Household family income​(codebook)
-# 		URBAN - Household urban area classification​(codebook)
-# 		URBANSIZE - Urban area size classification​(codebook)
-# 		URBRUR - Household in urban/rural area​(codebook)
-# 		WRKCOUNT - Count of workers in household​(codebook)
-# 	WHYTRP1S - Travel day trip purpose​(codebook)
-# 	"""
-#
-#
-#
-# 	# Encode Categorical Features
-# 	categorical_features = df.columns[:-1]
-# 	target_feature = df.columns[-1]
-#
-# 	# One-hot encode the input features
-# 	encoder = OneHotEncoder()
-# 	X_encoded = encoder.fit_transform(df[categorical_features]).toarray()
-#
-# 	# Label encode the output
-# 	label_encoder = LabelEncoder()
-# 	y_encoded = label_encoder.fit_transform(df[target_feature])
-# 	y_categorical = to_categorical(y_encoded)  # Convert to one-hot for multi-class classification
-#
-# 	# Train-test split
-# 	X_train, X_test, y_train, y_test = train_test_split(X_encoded, y_categorical, test_size=0.2, random_state=42)
-#
-# 	# Reshape input for LSTM (samples, timesteps, features)
-# 	# Assuming each data point is treated as a sequence of 1 timestep
-# 	X_train = X_train.reshape(X_train.shape[0], 1, X_train.shape[1])
-# 	X_test = X_test.reshape(X_test.shape[0], 1, X_test.shape[1])
-#
-# 	# Build LSTM Model
-# 	model = Sequential()
-# 	# LSTM Layer
-# 	model.add(LSTM(128, return_sequences=True))
-# 	model.add(BatchNormalization())
-# 	model.add(Dropout(0.2))
-# 	# second layer
-# 	model.add(LSTM(64, return_sequences=True))
-# 	model.add(BatchNormalization())
-# 	model.add(Dropout(0.2))
-# 	# third layer
-# 	model.add(LSTM(32, return_sequences=False))
-# 	model.add(BatchNormalization())
-# 	model.add(Dropout(0.2))
-# 	# Fully Connected Layer
-# 	model.add(Dense(32, activation='relu'))
-# 	# Additional Dropout Layer
-# 	model.add(Dropout(0.2))
-# 	# Output Layer (5 categories for WHYTRP1S)
-# 	model.add(Dense(y_categorical.shape[1], activation='softmax'))
-#
-# 	# Compile the model
-# 	model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-#
-# 	# Train the model
-# 	early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-# 	history = model.fit(
-# 		X_train, y_train,
-# 		validation_split=0.2,
-# 		epochs=50,
-# 		batch_size=32,
-# 		callbacks=[early_stopping]
-# 	)
-#
-# 	# Evaluate the model
-# 	test_loss, test_accuracy = model.evaluate(X_test, y_test)
-# 	print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
-#
-# 	# Making Predictions
-# 	predictions = model.predict(X_test)
-# 	predicted_classes = label_encoder.inverse_transform(np.argmax(predictions, axis=1))
-#
-# 	# Map predictions back to categories
-# 	print(f"Predicted Trip Purposes: {predicted_classes[50:70]}, {y_encoded[50:70]}")
-# def temp(df):
-# 	categorical_features = ["time_of_day","age_category","R_SEX","WORKER","TRPTRANS"]
-# 	encoder = OneHotEncoder(sparse_output=False)
-# 	encoded_cats = encoder.fit_transform(df[categorical_features])
-#
-# 	# Convert to DataFrame and concatenate
-# 	encoded_cats_df = pd.DataFrame(encoded_cats, columns=encoder.get_feature_names_out(categorical_features))
-# 	df = pd.concat([df.reset_index(drop=True), encoded_cats_df], axis=1).drop(categorical_features, axis=1)
-#
-# 	# Group by ID
-# 	grouped = df.groupby('ID')
-#
-# 	# Create sequences for each person
-# 	X_sequences = []
-# 	y_sequences = []
-#
-# 	for _, group in grouped:
-# 		# Exclude ID, Timestamp, and Target from input features
-# 		X = group.drop(columns=['ID', 'Timestamp', 'Trip_Purpose']).values
-# 		y = group['Trip_Purpose'].values
-#
-# 		X_sequences.append(X)
-# 		y_sequences.append(y)
-# 	from tensorflow.keras.preprocessing.sequence import pad_sequences
-# 	from sklearn.preprocessing import LabelEncoder
-#
-# 	# Define max sequence length
-# 	max_seq_length = 30  # Adjust based on dataset
-#
-# 	# Pad input sequences
-# 	X_padded = pad_sequences(X_sequences, maxlen=max_seq_length, padding='post', dtype='float32')
-#
-# 	# Encode target labels
-# 	label_encoder = LabelEncoder()
-# 	y_encoded = [label_encoder.fit_transform(seq) for seq in y_sequences]
-#
-# 	# Pad target sequences
-# 	y_padded = pad_sequences(y_encoded, maxlen=max_seq_length, padding='post', dtype='int32')
-#
-# 	X_train, X_test, y_train, y_test = train_test_split(X_padded, y_padded, test_size=0.2, random_state=42)
-#
-# 	# Define the model
-# 	model = Sequential()
-# 	model.add(LSTM(64, input_shape=(max_seq_length, X_padded.shape[2]), return_sequences=True))
-# 	model.add(Dropout(0.2))
-# 	model.add(LSTM(32, return_sequences=False))
-# 	model.add(Dropout(0.2))
-# 	model.add(Dense(len(label_encoder.classes_), activation='softmax'))  # Multi-class classification
-#
-# 	# Compile the model
-# 	model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-#
-# 	# Train the model
-# 	history = model.fit(X_train, y_train, validation_split=0.2, epochs=10, batch_size=32)
-#
-# 	# Evaluate the model
-# 	test_loss, test_accuracy = model.evaluate(X_test, y_test)
-# 	print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
+def neural_network(df):
+
+	"""
+		HOUSEID - Unique Identifier- Household​(codebook)
+		PERSONID - Person ID within household​(codebook)
+		TRIPID - Trip ID for each trip a person took​(codebook)
+		SEQ_TRIPID - Renumbered sequential trip ID​(codebook)
+		VEHCASEID - Unique vehicle identifier​(codebook)
+		FRSTHM - First trip of the day was from home​(codebook)
+		TDWKND - Weekend trip indicator​(codebook)
+		TDAYDATE - Date of travel day (YYYYMM)​(codebook)
+		TRAVDAY - Travel day - day of the week​(codebook)
+	STRTTIME - 24 hour local start time of trip​(codebook)
+		ENDTIME - 24 hour local end time of trip​(codebook)
+		TRVLCMIN - Trip duration in minutes​(codebook)
+		LOOP_TRIP - Trip origin and destination at identical location​(codebook)
+		DWELTIME - Dwelling time at location​(codebook)
+		PUBTRANS - Used public transit on trip​(codebook)
+	TRPTRANS - Trip mode, derived (e.g., car, bus, bike)​(codebook)
+		WALK - Walking activity on trip​(codebook)
+		TRPMILES - Calculated trip distance converted into miles​(codebook)
+		RAIL - MSA heavy rail status for household​(codebook)
+		CENSUS_D - Census Division classification for home address (not available in search results)
+		CENSUS_R - Census Region classification for home address​(codebook)
+	CDIVMSAR - Census Division, MSA, Rail Grouping​(codebook)
+	HHFAMINC - Household family income​(codebook)
+		URBAN - Household urban area classification​(codebook)
+		URBANSIZE - Urban area size classification​(codebook)
+		URBRUR - Household in urban/rural area​(codebook)
+		WRKCOUNT - Count of workers in household​(codebook)
+	WHYTRP1S - Travel day trip purpose​(codebook)
+	"""
 
 
 def categorize_age(df, age_column="R_AGE"):
@@ -583,85 +457,6 @@ def plot(history):
 	plt.legend()
 	plt.title('Training and Validation Loss')
 	plt.show()
-
-
-def main(df):
-	# Step 1: Preprocessing
-	df['id'] = df['id'].astype(str)  # Ensuring 'id' is a string
-
-	# Label Encoding for categorical features with a natural order
-	le_age_category = LabelEncoder()
-	df['age_category'] = le_age_category.fit_transform(df['age_category'])
-
-	le_worker = LabelEncoder()
-	df['WORKER'] = le_worker.fit_transform(df['WORKER'])
-
-	le_time_of_day = LabelEncoder()
-	df['time_of_day'] = le_time_of_day.fit_transform(df['time_of_day'])
-
-	le_trptrans = LabelEncoder()
-	df['TRPTRANS'] = le_trptrans.fit_transform(df['TRPTRANS'])
-
-	le_hhfaminc = LabelEncoder()
-	df['HHFAMINC'] = le_hhfaminc.fit_transform(df['HHFAMINC'])
-
-	le_r_relat = LabelEncoder()
-	df['R_RELAT'] = le_r_relat.fit_transform(df['R_RELAT'])
-
-	# One-Hot Encoding for 'R_SEX' (binary categorical variable)
-	df = pd.get_dummies(df, columns=['R_SEX'], prefix='R_SEX')
-
-	# Label encoding for the target variable
-	target_encoder = LabelEncoder()
-	df['WHYTRP1S'] = target_encoder.fit_transform(df['WHYTRP1S'])
-
-	# Step 2: Grouping by 'id' and Preparing Sequences
-	grouped = df.groupby('id')
-
-	# List of sequences for each id
-	features = ['age_category', 'WORKER', 'time_of_day', 'TRPTRANS', 'HHFAMINC', 'R_RELAT', 'R_SEX_1', 'R_SEX_2']
-	x_sequences = []
-	y_sequences = []
-
-	for name, group in grouped:
-		x_sequences.append(group[features].values)
-		y_sequences.append(group['WHYTRP1S'].values[0])  # Assuming one target per ID
-
-	# Padding sequences to have the same length
-	x_padded = pad_sequences(x_sequences, padding='post', dtype='float32')
-
-	# One-hot encoding the target variable
-	y_encoded = to_categorical(y_sequences)
-
-	# Step 3: Splitting the Data Into Train and Test Sets
-	x_train, x_test, y_train, y_test = train_test_split(x_padded, y_encoded, test_size=0.2, random_state=42)
-
-	# Step 4: Building the LSTM Model
-	input_layer = Input(shape=(x_padded.shape[1], x_padded.shape[2]))
-
-	# Adding Masking Layer to handle variable sequence lengths
-	masked = Masking(mask_value=0.0)(input_layer)
-
-	# Adding LSTM layer
-	lstm_out = LSTM(64, return_sequences=False)(masked)
-
-	# Output layer for classification
-	output_layer = Dense(5, activation='softmax')(lstm_out)
-
-	# Defining the model
-	model = Model(inputs=input_layer, outputs=output_layer)
-	model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-	# Summary of the model
-	model.summary()
-
-	# Step 5: Training the Model
-	model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=10, batch_size=32)
-
-	# Step 6: Evaluation
-	evaluation = model.evaluate(x_test, y_test)
-	print(f"Test Accuracy: {evaluation[1]}")
-
 
 def tmp0(df):
 
@@ -695,16 +490,16 @@ def tmp0(df):
 		X_sequences.append(X)
 		y_sequences.append(y)
 
-	# # Encode Target (y) Using Label Encoding
+	# # # Encode Target (y) Using Label Encoding
 	# label_encoder = LabelEncoder()
 	# y_encoded = [label_encoder.fit_transform(seq) for seq in y_sequences]
-
-	# # Convert target to one-hot encoding
+	#
+	# # # Convert target to one-hot encoding
 	num_classes = len(np.unique(df['WHYTRP1S']))
 	# y_one_hot = [to_categorical(seq, num_classes=num_classes) for seq in y_encoded]
-
-	# Take only the last label of each sequence
-	y_final_one_hot = np.array([seq[-1] for seq in y_one_hot])
+	#
+	# # Take only the last label of each sequence
+	# y_final_one_hot = np.array([seq[-1] for seq in y_one_hot])
 
 	# Split Data into Train-Test Sets
 	X_train, X_test, y_train, y_test = train_test_split(X_sequences, y_sequences, test_size=0.2, random_state=42)
@@ -826,7 +621,7 @@ def tmp1(df):
 		print(f"{col}: {type(enc).__name__}")
 
 
-def tmp(data):
+def tmp_transformer(data):
 	import pandas as pd
 	import numpy as np
 	from sklearn.model_selection import train_test_split
@@ -951,82 +746,7 @@ def tmp(data):
 	train_model(model, train_loader, val_loader, criterion, optimizer, epochs=10)
 
 
-def tmp01(df):
-
-	# Step 2: One-Hot Encoding for Low-Cardinality Features ('R_SEX', 'WORKER')
-	encoder = OneHotEncoder(sparse_output=False)
-	one_hot_features = encoder.fit_transform(df[["R_SEX","WORKER","R_RELAT","TRPTRANS"]])
-
-	# Add encoded features back to the dataframe
-	encoded_feature_names = encoder.get_feature_names_out(['R_SEX','WORKER',"R_RELAT","TRPTRANS"])
-	one_hot_df = pd.DataFrame(one_hot_features, columns=encoded_feature_names, index=df.index)
-	df = pd.concat([df, one_hot_df], axis=1)
-
-	X = df.drop(columns=['id','WHYTRP1S','time_of_day','R_SEX','WORKER',"R_RELAT","TRPTRANS"]).values
-	y = df['WHYTRP1S'].values
-
-
-	# # Encode Target (y) Using Label Encoding
-	# label_encoder = LabelEncoder()
-	# y_encoded = [label_encoder.fit_transform(seq) for seq in y_sequences]
-	#
-	# # Convert target to one-hot encoding
-	# num_classes = len(np.unique(df['WHYTRP1S']))
-	# y_one_hot = [to_categorical(seq, num_classes=num_classes) for seq in y_encoded]
-
-	# # Take only the last label of each sequence
-	# y_final_one_hot = np.array([seq[-1] for seq in y_one_hot])
-
-	# Split Data into Train-Test Sets
-	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-
-	# Build the LSTM Model
-	model = Sequential()
-	model.add(Masking(mask_value=0.0, input_shape=(None, X_train[0].shape[0])))  # Mask variable-length sequences
-	model.add(LSTM(64, return_sequences=True))
-	model.add(Dropout(0.3))
-	model.add(LSTM(32, return_sequences=False))
-	model.add(Dropout(0.3))
-	model.add(Dense(32, activation='relu'))
-	model.add(Dropout(0.2))
-	model.add(Dense(5, activation='softmax'))
-
-	# Compile the model
-	model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-	# Train the model
-	history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=3, batch_size=64)
-
-	# Evaluate the model
-	test_loss, test_accuracy = model.evaluate(X_test, y_test)
-	print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
-
-
 if __name__ == '__main__':
-	df_per = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/perv2pub.csv", header=0,
-						 usecols=['HOUSEID','PERSONID','R_SEX','WORKER','R_AGE','R_RELAT'])
-	df_trip = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/tripv2pub.csv", header=0,
-						  usecols=['HOUSEID','PERSONID',"STRTTIME","TDAYDATE","TRAVDAY","TRPTRANS","CDIVMSAR","HHFAMINC","WHYTRP1S"])
-	df_trip = pd.merge(df_trip,df_per,on=['HOUSEID','PERSONID'])
-	df_trip = df_trip[~df_trip.isin([-1,-9,-7,-8]).any(axis=1)]
-
-	# df_trip = df_trip[df_trip.CDIVMSAR.isin([51,52,53,54])]
-	df_trip = categorize_age(df_trip)
-	df_trip['time_of_day'] = df_trip['STRTTIME'].apply(lambda x:((x//100)*60+(x%100))//30+1)
-
-	# df_trip['date_'] = df_trip[['TDAYDATE', 'TRAVDAY']].apply(lambda x:dt.datetime(int(str(x.TDAYDATE)[:4]),int(str(x.TDAYDATE)[4:],10),x.TRAVDAY).date(), axis=1)
-	# df_trip['year_'] = df_trip['TDAYDATE'].apply(lambda x:x//100)
-	# df_trip['month_'] = df_trip['TDAYDATE'].apply(lambda x:x%100)
-	# df_trip['day_'] = df_trip['TRAVDAY']
-	# df_trip['hour_'] = df_trip['STRTTIME'].apply(lambda x:x//100)
-	# df_trip['minute_'] = df_trip['STRTTIME'].apply(lambda x:x%100)
-	df_trip['WHYTRP1S'] = df_trip.WHYTRP1S.replace({10:2,40:3,20:4,30:5, 50:5, 70:5, 80:5, 97:5})
-	df_trip["id"] = df_trip[['HOUSEID','PERSONID']].apply(lambda x:int(f"{x.HOUSEID}{x.PERSONID}"),axis=1)
-	df_trip = df_trip[["id","R_RELAT","HHFAMINC","age_category","R_SEX","WORKER","TRPTRANS","time_of_day","WHYTRP1S"]]
-	df_trip.drop_duplicates(inplace=True)
-	df_trip = df_trip.sort_values(['id','time_of_day'])
-
 
 	'''
 	2022
@@ -1094,11 +814,3 @@ if __name__ == '__main__':
 	97 21=Something Else
 	'''
 
-	# df_hh = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/hhv2pub.csv",header=0)
-	# df_per = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/perv2pub.csv",header=0)
-	# df_veh = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/vehv2pub.csv",header=0)
-	# df_ld = pd.read_csv("/home/samim/pycharm_projects/academic/lstm/data/ldtv2pub.csv",header=0)
-	# col_hh = set(df_hh.columns)
-	# col_per = set(df_per.columns)
-	tf.random.set_seed(7)
-	tmp0(df_trip)
